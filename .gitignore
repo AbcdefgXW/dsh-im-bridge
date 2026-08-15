@@ -1,0 +1,6 @@
+# 运行时数据（发布排除）
+state/
+*.log
+node_modules/
+.DS_Store
+Thumbs.db

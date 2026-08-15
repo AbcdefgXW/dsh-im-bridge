@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowJs": false,
+    "declaration": false,
+    "outDir": "../../../dist/protocol"
+  },
+  "include": ["./**/*.ts"],
+  "exclude": ["**/*.test.ts"]
+}
