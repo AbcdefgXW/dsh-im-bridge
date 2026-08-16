@@ -29,6 +29,20 @@
 
 ## Installation
 
+## Installation
+
+```bash
+# Option 1: npm package (recommended)
+dsh plugin --profile web add dsh-msg-hub
+
+# Option 2: GitHub repository
+dsh plugin --profile web add github:AbcdefgXW/dsh-msg-hub
+
+# Option 3: manual
+git clone https://github.com/AbcdefgXW/dsh-msg-hub.git
+cd dsh-msg-hub && npm install
+
+
 ```bash
 git clone https://github.com/USER/dsh-msg-hub.git
 cd dsh-msg-hub && npm install

@@ -29,6 +29,20 @@
 
 ## 安装
 
+## 安装
+
+```bash
+# 方式一：npm 包（推荐）
+dsh plugin --profile web add dsh-msg-hub
+
+# 方式二：GitHub 仓库
+dsh plugin --profile web add github:AbcdefgXW/dsh-msg-hub
+
+# 方式三：手动
+git clone https://github.com/AbcdefgXW/dsh-msg-hub.git
+cd dsh-msg-hub && npm install
+
+
 ```bash
 # 1. 克隆并安装依赖
 git clone https://github.com/USER/dsh-msg-hub.git
