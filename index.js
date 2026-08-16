@@ -17,6 +17,7 @@ import { startFeishuBots, sendFeishuText } from "./lib/feishu/adapter.js";
 import { listWeixinAccountIds, resolveWeixinAccount } from "./dist/protocol/auth/accounts.js";
 import { logger } from "./dist/protocol/util/logger.js";
 import { diagLog } from "./lib/diag.js";
+import { createRemoteMonitor } from "./lib/remote.js";
 import { Service } from "@deepseek-ai/cordis";
 
 export const name = "dsh-msg-hub";
@@ -111,11 +112,25 @@ export function apply(ctx) {
     getQqBot: () => (qqBotsMap.size > 0 ? [...qqBotsMap.values()][0] : null),
     getFeishuClient: () => (feishuClientsMap.size > 0 ? [...feishuClientsMap.values()][0] : null),
   };
+  const pushApi = new ChannelsPushApi(ctx, deps);
   new ChannelsPushApi(ctx, deps);
   log.info("dsh-msg-hub: push 服务已提供（dsh-channels-push）");
 
+  // ── 远程监控：审批远程批准 / turn 推送 / /sessions /bind /status ──
+  const remote = createRemoteMonitor(ctx, {
+    push: async (channel, peerId, text) => {
+      const r = await pushApi.push({ channel, peerId, text });
+      if (!r.ok) log.warn(`dsh-msg-hub: 远程推送失败 ${channel}/${peerId}: ${r.error}`);
+    },
+  });
+  log.info("dsh-msg-hub: 远程监控已启用（/sessions /bind /status + 审批远程批准）");
+  ctx.on("dispose", () => remote.stop());
+
   // ── 微信 ──
   async function handleWeixinMessage(text, peerId, contextToken) {
+    // 远程监控命令（/sessions /bind /status /审批应答）优先拦截
+    const sessionsSvc = ctx.get("sessions");
+    if (await remote.handleCommand("weixin", peerId, text, sessionsSvc)) return;
     // 找到 peerId 对应的账户（token/contextToken 匹配）；简化：用第一个已配置账户
     const account = resolveFirstConfiguredAccount();
     if (!account) {
@@ -149,6 +164,8 @@ export function apply(ctx) {
   const qqRuntime = { bots: new Map(), stop: () => {} };
   startQqBots({
     onMessage: async (text, peerKey, replyTarget, msg, bot) => {
+      const sessionsSvc = ctx.get("sessions");
+      if (await remote.handleCommand("qq", peerKey, text, sessionsSvc)) return;
       await bridge.inbound({
         channel: "qq",
         peerId: peerKey,
@@ -176,6 +193,8 @@ export function apply(ctx) {
     onMessage: async (text, peerKey, event, client) => {
       const openId = event?.sender?.sender_id?.open_id ?? "";
       if (!openId) return;
+      const sessionsSvc = ctx.get("sessions");
+      if (await remote.handleCommand("feishu", peerKey, text, sessionsSvc)) return;
       await bridge.inbound({
         channel: "feishu",
         peerId: peerKey,
