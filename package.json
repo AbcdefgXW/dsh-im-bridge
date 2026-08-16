@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "dsh IM hub: WeChat(ilinkai) / QQ / Feishu bridge with proactive push & remote monitoring",
   "type": "module",
-  "private": true,
   "main": "index.js",
   "scripts": {
     "build": "node scripts/build.mjs",
