@@ -1,5 +1,5 @@
 /**
- * index.js — dsh-im-bridge cordis 插件入口
+ * index.js — dsh-msg-hub cordis 插件入口
  *
  * 挂载进 dsh web profile（cordis.patch.yml），随 dsh 进程启停：
  *   1. 创建 bridge（agents/sessions/agentDefaultModel 服务注入）
@@ -19,7 +19,7 @@ import { logger } from "./dist/protocol/util/logger.js";
 import { diagLog } from "./lib/diag.js";
 import { Service } from "@deepseek-ai/cordis";
 
-export const name = "dsh-im-bridge";
+export const name = "dsh-msg-hub";
 
 export const inject = ["agents", "sessions", "agentDefaultModel"];
 
@@ -27,7 +27,7 @@ export const inject = ["agents", "sessions", "agentDefaultModel"];
  * 主动推送服务（供其他插件调用，如 dsh-toolbox 定时心跳推送渠道）。
  * - push({channel, peerId, text})：直接发文本到 IM（不经过 agent）
  * - task({channel, peerId, prompt})：完整流程——唤醒渠道 agent 执行 prompt，回复回传 IM
- * peerId 与 dsh-im-bridge 会话 ID 反推一致（如 ch-weixin-<peerId>）。
+ * peerId 与 dsh-msg-hub 会话 ID 反推一致（如 ch-weixin-<peerId>）。
  */
 export class ChannelsPushApi extends Service {
   constructor(ctx, deps) {
@@ -112,7 +112,7 @@ export function apply(ctx) {
     getFeishuClient: () => (feishuClientsMap.size > 0 ? [...feishuClientsMap.values()][0] : null),
   };
   new ChannelsPushApi(ctx, deps);
-  log.info("dsh-im-bridge: push 服务已提供（dsh-channels-push）");
+  log.info("dsh-msg-hub: push 服务已提供（dsh-channels-push）");
 
   // ── 微信 ──
   async function handleWeixinMessage(text, peerId, contextToken) {
@@ -143,7 +143,7 @@ export function apply(ctx) {
   }
 
   const stopWeixin = startWeixinMonitors({ onMessage: handleWeixinMessage });
-  log.info("dsh-im-bridge: weixin monitors started");
+  log.info("dsh-msg-hub: weixin monitors started");
 
   // ── QQ ──
   const qqRuntime = { bots: new Map(), stop: () => {} };
@@ -164,7 +164,7 @@ export function apply(ctx) {
       qqRuntime.bots = runtime.bots;
       qqBotsMap = runtime.bots;
       qqRuntime.stop = runtime.stop;
-      log.info(`dsh-im-bridge: qq bots started (${runtime.bots.size})`);
+      log.info(`dsh-msg-hub: qq bots started (${runtime.bots.size})`);
     })
     .catch((err) => {
       diagLog(`[qq] 启动失败: ${String(err)}`);
@@ -191,7 +191,7 @@ export function apply(ctx) {
       feishuRuntime.clients = runtime.clients;
       feishuClientsMap = runtime.clients;
       feishuRuntime.stop = runtime.stop;
-      log.info(`dsh-im-bridge: feishu bots started (${runtime.clients.size})`);
+      log.info(`dsh-msg-hub: feishu bots started (${runtime.clients.size})`);
     })
     .catch((err) => {
       diagLog(`[feishu] 启动失败: ${String(err)}`);
@@ -199,7 +199,7 @@ export function apply(ctx) {
 
   // 卸载时停止
   ctx.on("dispose", () => {
-    log.info("dsh-im-bridge: stopping");
+    log.info("dsh-msg-hub: stopping");
     stopWeixin();
     qqRuntime.stop();
     feishuRuntime.stop();

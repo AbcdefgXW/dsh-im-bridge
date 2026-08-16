@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * setup.mjs — dsh-im-bridge 一键挂载/恢复脚本
+ * setup.mjs — dsh-msg-hub 一键挂载/恢复脚本
  *
  * 容器重构或 dsh 升级后运行：node scripts/setup.mjs
  * 幂等：重复运行安全。
@@ -25,12 +25,12 @@ const PROFILE_DIR = process.env.DSH_HOME
 const PATCH_FILE = path.join(PROFILE_DIR, "cordis.patch.yml");
 
 const INSERT_BLOCK = `
-# dsh-im-bridge：IM 渠道桥（微信 ilinkai 协议，后续接 QQ/飞书）
-# 源码 /workspace/dsh-plugins/dsh-im-bridge/（pnpm link 进 profile node_modules）
+# dsh-msg-hub：IM 渠道桥（微信 ilinkai 协议，后续接 QQ/飞书）
+# 源码 /workspace/dsh-plugins/dsh-msg-hub/（pnpm link 进 profile node_modules）
 # 由 scripts/setup.mjs 管理，请勿手改（升级 dsh 后重跑 setup 即可）
 - insert:
-    - id: dsh-im-bridge
-      name: dsh-im-bridge
+    - id: dsh-msg-hub
+      name: dsh-msg-hub
 `;
 
 function step(title) {
@@ -60,7 +60,7 @@ try {
   // dsh plugin add 已存在时可能非零退出，容错
   console.log("  (dsh plugin add 输出如上，继续)");
 }
-const linkPath = path.join(PROFILE_DIR, "node_modules", "dsh-im-bridge");
+const linkPath = path.join(PROFILE_DIR, "node_modules", "dsh-msg-hub");
 if (!fs.existsSync(linkPath)) {
   console.log("  用 pnpm 直接链接...");
   // pnpm 可能不在 PATH（corepack 启用未持久），用 corepack 兜底
@@ -80,7 +80,7 @@ console.log("  OK:", linkPath);
 // 3. cordis.patch.yml insert entry（幂等）
 step("写入 cordis.patch.yml entry（幂等）");
 let patch = fs.readFileSync(PATCH_FILE, "utf-8");
-const marker = "id: dsh-im-bridge";
+const marker = "id: dsh-msg-hub";
 if (patch.includes(marker)) {
   console.log("  entry 已存在，跳过");
 } else {
@@ -111,10 +111,10 @@ if (patch2.includes("id: dsh-toolbox")) {
 step("校验配置树");
 try {
   const out = execSync("dsh --profile web --dump-config 2>&1", { encoding: "utf-8" });
-  if (out.includes("dsh-im-bridge") && out.includes("dsh-toolbox")) {
-    console.log("  配置树包含 dsh-im-bridge + dsh-toolbox ✅");
+  if (out.includes("dsh-msg-hub") && out.includes("dsh-toolbox")) {
+    console.log("  配置树包含 dsh-msg-hub + dsh-toolbox ✅");
   } else {
-    fail("配置树缺失插件（dsh-im-bridge/dsh-toolbox），请检查 " + PATCH_FILE);
+    fail("配置树缺失插件（dsh-msg-hub/dsh-toolbox），请检查 " + PATCH_FILE);
   }
 } catch (e) {
   fail("dump-config 失败: " + e.message);

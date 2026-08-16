@@ -8,7 +8,7 @@ import path from "node:path";
  */
 const MAIN_LOG_DIR = process.env.DSH_CHANNELS_STATE_DIR?.trim()
     ? path.join(process.env.DSH_CHANNELS_STATE_DIR.trim(), "logs")
-    : path.join("/workspace", "dsh-plugins", "dsh-im-bridge", "state", "logs");
+    : path.join("/workspace", "dsh-plugins", "dsh-msg-hub", "state", "logs");
 const SUBSYSTEM = "dsh/channels/weixin";
 const RUNTIME = "node";
 const RUNTIME_VERSION = process.versions.node;
@@ -52,7 +52,7 @@ function localDateKey(now) {
 }
 function resolveMainLogPath() {
     const dateKey = localDateKey(new Date());
-    return path.join(MAIN_LOG_DIR, `dsh-im-bridge-${dateKey}.log`);
+    return path.join(MAIN_LOG_DIR, `dsh-msg-hub-${dateKey}.log`);
 }
 let logDirEnsured = false;
 function buildLoggerName(accountId) {

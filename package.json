@@ -1,7 +1,7 @@
 {
-  "name": "dsh-im-bridge",
+  "name": "dsh-msg-hub",
   "version": "0.1.0",
-  "description": "dsh IM channels bridge: WeChat(ilinkai) / QQ(Open Platform) / Feishu(Lark) -> dsh agent sessions",
+  "description": "dsh IM hub: WeChat(ilinkai) / QQ / Feishu bridge with proactive push & remote monitoring",
   "type": "module",
   "private": true,
   "main": "index.js",

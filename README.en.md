@@ -1,4 +1,4 @@
-# dsh-im-bridge
+# dsh-msg-hub
 
 [English](README.en.md) | [简体中文](README.md)
 
@@ -26,17 +26,17 @@
 ## Installation
 
 ```bash
-git clone https://github.com/USER/dsh-im-bridge.git
-cd dsh-im-bridge && npm install
-cd $DSH_HOME/profiles/web && pnpm link /path/to/dsh-im-bridge
+git clone https://github.com/USER/dsh-msg-hub.git
+cd dsh-msg-hub && npm install
+cd $DSH_HOME/profiles/web && pnpm link /path/to/dsh-msg-hub
 ```
 
 Register in `cordis.patch.yml`:
 
 ```yaml
 - insert:
-    - id: dsh-im-bridge
-      name: dsh-im-bridge
+    - id: dsh-msg-hub
+      name: dsh-msg-hub
 ```
 
 Restart `dsh web`.

@@ -1,4 +1,4 @@
-# dsh-im-bridge
+# dsh-msg-hub
 
 [English](README.en.md) | [简体中文](README.md)
 
@@ -27,19 +27,19 @@
 
 ```bash
 # 1. 克隆并安装依赖
-git clone https://github.com/USER/dsh-im-bridge.git
-cd dsh-im-bridge && npm install
+git clone https://github.com/USER/dsh-msg-hub.git
+cd dsh-msg-hub && npm install
 
 # 2. 注册进 dsh profile
-cd $DSH_HOME/profiles/web && pnpm link /路径/dsh-im-bridge
+cd $DSH_HOME/profiles/web && pnpm link /路径/dsh-msg-hub
 ```
 
 在 profile 的 `cordis.patch.yml` 加入：
 
 ```yaml
 - insert:
-    - id: dsh-im-bridge
-      name: dsh-im-bridge
+    - id: dsh-msg-hub
+      name: dsh-msg-hub
 ```
 
 重启 `dsh web`。

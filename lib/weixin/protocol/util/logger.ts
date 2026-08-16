@@ -63,7 +63,7 @@ function localDateKey(now: Date): string {
 
 function resolveMainLogPath(): string {
   const dateKey = localDateKey(new Date());
-  return path.join(MAIN_LOG_DIR, `dsh-im-bridge-${dateKey}.log`);
+  return path.join(MAIN_LOG_DIR, `dsh-msg-hub-${dateKey}.log`);
 }
 
 let logDirEnsured = false;
