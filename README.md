@@ -89,6 +89,54 @@ node scripts/feishu-login.mjs --appid <AppID> --secret <AppSecret>
 
 > 凭证全部保存在插件 `state/` 目录（已 gitignore，不会提交）；三个渠道可同时启用。
 
+## 卸载
+
+```bash
+# 方式一：dsh 命令
+dsh plugin --profile web remove dsh-msg-hub
+
+# 方式二：手动
+# 1. 编辑 profile 的 package.json，从 dsh.profile.bundles 移除 "dsh-msg-hub"
+# 2. rm -rf $DSH_HOME/profiles/web/node_modules/dsh-msg-hub
+# 3. rm -rf <插件目录>/state   # 凭证/日志/会话 token
+# 4. 重启 dsh web
+```
+
+> 卸载后 dsh-toolbox-web 的定时心跳 IM 渠道推送自动不可用（回退主工作区心跳），其余功能不受影响。
+
+## 崩溃恢复（vi 应急手册）
+
+**① `duplicate loader entry id: dsh-msg-hub`（最常见）**——被注册两次（bundles + 手动 insert）：
+
+```bash
+vi /home/dsh/profiles/web/cordis.patch.yml
+# 删除形如以下的手动 insert 块（bundles 会自动挂载，不需要它）：
+#   - insert:
+#       - id: dsh-msg-hub
+#         name: 'dsh-msg-hub'
+# 保留 sandbox-policy / approval 等系统配置不动
+```
+
+**② `cannot resolve profile bundle "dsh-msg-hub"`（依赖缺失）**
+
+```bash
+vi /home/dsh/profiles/web/package.json   # 检查 bundles 与 dependencies 对应
+ls -la /home/dsh/profiles/web/node_modules/ | grep dsh-
+ln -s /path/to/插件目录 /home/dsh/profiles/web/node_modules/dsh-msg-hub   # 恢复软链
+```
+
+**通用救急（备份回滚）**：
+
+```bash
+ls /home/dsh/profiles/web/cordis.patch.yml.bak-*   # patch 备份
+ls /home/dsh/profiles/web/package.json.bak-*       # package.json 备份
+cp 备份名 /home/dsh/profiles/web/cordis.patch.yml  # 覆盖回去
+```
+
+修改后**重启 dsh** 生效；仍失败看日志：`docker logs deepseek-harness`。
+
+> ⚠️ 本插件自带 `cordis.patch.yml` 注册行，由 `dsh plugin add` 自动挂载，**切勿**在 profile 的 `cordis.patch.yml` 手动 insert（见「安装」警示）。
+
 ## 环境变量
 
 | 变量 | 用途 | 默认 |
