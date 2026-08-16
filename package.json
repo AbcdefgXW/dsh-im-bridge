@@ -24,5 +24,10 @@
     "@types/node": "^26.2.0",
     "esbuild": "^0.24.0",
     "typescript": "^5.8.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
   }
 }
