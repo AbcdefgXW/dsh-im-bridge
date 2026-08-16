@@ -29,8 +29,6 @@
 
 ## 安装
 
-## 安装
-
 ```bash
 # 方式一：npm 包（推荐）
 dsh plugin --profile web add dsh-msg-hub
@@ -38,27 +36,17 @@ dsh plugin --profile web add dsh-msg-hub
 # 方式二：GitHub 仓库
 dsh plugin --profile web add github:AbcdefgXW/dsh-msg-hub
 
-# 方式三：手动
+# 方式三：手动（本地开发/内网）
 git clone https://github.com/AbcdefgXW/dsh-msg-hub.git
 cd dsh-msg-hub && npm install
-
-
-```bash
-# 1. 克隆并安装依赖
-git clone https://github.com/USER/dsh-msg-hub.git
-cd dsh-msg-hub && npm install
-
-# 2. 注册进 dsh profile
+# 软链进 profile 并加入 bundles：
 cd $DSH_HOME/profiles/web && pnpm link /路径/dsh-msg-hub
+# 然后确认 package.json 的 dsh.profile.bundles 包含 dsh-msg-hub
 ```
 
-在 profile 的 `cordis.patch.yml` 加入：
-
-```yaml
-- insert:
-    - id: dsh-msg-hub
-      name: dsh-msg-hub
-```
+> `dsh plugin add` 会自动将本插件加入 profile 的 `dsh.profile.bundles` 并挂载插件自带的注册行（`cordis.patch.yml`），**无需也不应手动修改任何配置文件**。
+>
+> ⚠️ 排查注册问题时请检查 `package.json` 的 `dsh.profile.bundles` 是否包含 `dsh-msg-hub`；**切勿**再在 profile 的 `cordis.patch.yml` 里手动 `insert` 本插件——bundles 已挂载时手动 insert 会导致 `duplicate loader entry id` 启动崩溃。
 
 重启 `dsh web`。
 
