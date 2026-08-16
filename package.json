@@ -29,5 +29,13 @@
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AbcdefgXW/dsh-msg-hub.git"
+  },
+  "homepage": "https://github.com/AbcdefgXW/dsh-msg-hub",
+  "bugs": {
+    "url": "https://github.com/AbcdefgXW/dsh-msg-hub/issues"
   }
 }
