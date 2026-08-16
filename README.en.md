@@ -15,7 +15,7 @@
 - **🧩 Proactive push service** (`dsh-channels-push` cordis service):
   - `push({channel, peerId, text})`: send text directly to IM
   - `task({channel, peerId, prompt})`: wake the channel agent to run a task; the AI reply is delivered back to the IM automatically
-  - Consumed by plugins like dsh-toolbox's scheduled heartbeat (channel push is unavailable without this plugin; everything else is unaffected)
+  - Consumed by plugins like dsh-toolbox-web's scheduled heartbeat (channel push is unavailable without this plugin; everything else is unaffected)
 - **📡 Remote monitoring** (keep an eye on tasks away from the computer):
   - **Remote approval**: when the bound session's agent requests approval, the request is pushed to IM (tool name / reason / command detail); reply "批准" or "拒绝" to answer; 5-minute timeout falls back to rejected (safe default)
   - **Turn push**: task started / finished / errored / blocked notifications for the bound session
