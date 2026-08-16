@@ -137,6 +137,29 @@ cp 备份名 /home/dsh/profiles/web/cordis.patch.yml  # 覆盖回去
 
 > ⚠️ 本插件自带 `cordis.patch.yml` 注册行，由 `dsh plugin add` 自动挂载，**切勿**在 profile 的 `cordis.patch.yml` 手动 insert（见「安装」警示）。
 
+## 扩展新 IM 渠道（适配器注册表，预留给第三方插件）
+
+内置微信 / QQ / 飞书三个渠道；**其他渠道通过适配器注册表接入**，无需改本插件代码：
+
+```js
+// 第三方插件（如 dsh-telegram-bridge）在启动时注册：
+const api = ctx.get("dsh-channels-push"); // 服务 id：dsh-channels-push
+api.registerChannel("telegram", {
+  // 必选：向 peerId 发送文本（peerId 为渠道侧的用户/群标识）
+  send: async (peerId, text) => { /* 调 Telegram Bot API 发送 */ },
+  // 可选：自定义会话 ID 匹配（默认按 ch-<channel>- 前缀解析）
+  matchSessionId: (sessionId) => sessionId.startsWith("ch-telegram-"),
+});
+```
+
+注册后自动获得完整能力：
+
+- **主动推送**：`push({ channel: "telegram", peerId, text })` —— 定时心跳等可直接推到新渠道
+- **任务下发**：`task({ channel, peerId, prompt })` —— 唤醒渠道 agent 执行并把回复回传
+- **会话解析**：`resolveChannel("ch-telegram-<peerId>")` —— 与内置渠道一致
+
+会话 ID 规范：`ch-<channel>-<peerId>`（如 `ch-weixin-xxx`、`ch-telegram-xxx`）。
+
 ## 环境变量
 
 | 变量 | 用途 | 默认 |
