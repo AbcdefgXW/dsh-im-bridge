@@ -28,43 +28,54 @@ export const inject = ["agents", "sessions", "agentDefaultModel"];
  * 主动推送服务（供其他插件调用，如 dsh-toolbox 定时心跳推送渠道）。
  * - push({channel, peerId, text})：直接发文本到 IM（不经过 agent）
  * - task({channel, peerId, prompt})：完整流程——唤醒渠道 agent 执行 prompt，回复回传 IM
+ * - registerChannel(channel, adapter)：**适配器注册表**——第三方插件可注册自己的渠道
+ *   adapter = { send: (peerId, text) => Promise, matchSessionId?: (sessionId) => boolean }
+ *   （内置 weixin/qq/feishu 已注册；注册后 push/task 与 sessionId 解析自动支持该渠道）
+ * - resolveChannel(sessionId)：把 ch-<channel>-<peerId> 会话 ID 解析为 {channel, peerId}
  * peerId 与 dsh-msg-hub 会话 ID 反推一致（如 ch-weixin-<peerId>）。
  */
 export class ChannelsPushApi extends Service {
   constructor(ctx, deps) {
     super(ctx, "dsh-channels-push");
     this.deps = deps; // { bridge, getWeixinAccount, getQqBot, getFeishuClient }
+    /** 适配器注册表：channel -> adapter */
+    this.channels = new Map();
+  }
+
+  /** 注册渠道适配器（第三方渠道插件接入点）。 */
+  registerChannel(channel, adapter) {
+    if (!channel || typeof channel !== "string") throw new TypeError("channel 必须是非空字符串");
+    if (!adapter || typeof adapter.send !== "function") throw new TypeError("adapter 必须提供 send(peerId, text)");
+    this.channels.set(channel, adapter);
+    return { ok: true, channel };
+  }
+
+  /** 通过会话 ID 解析渠道（优先注册表 matchSessionId，内置前缀兜底）。 */
+  resolveChannel(sessionId) {
+    const s = String(sessionId || "");
+    for (const [channel, adapter] of this.channels) {
+      if (typeof adapter.matchSessionId === "function" && adapter.matchSessionId(s)) {
+        const prefix = "ch-" + channel + "-";
+        if (s.startsWith(prefix)) return { channel, peerId: s.slice(prefix.length) };
+      }
+    }
+    // 内置前缀兜底
+    for (const [prefix, channel] of [["ch-weixin-", "weixin"], ["ch-qq-", "qq"], ["ch-feishu-", "feishu"]]) {
+      if (s.startsWith(prefix)) return { channel, peerId: s.slice(prefix.length) };
+    }
+    return null;
   }
 
   async push({ channel, peerId, text }) {
     const d = this.deps;
     try {
-      if (channel === "weixin") {
-        const acc = d.getWeixinAccount();
-        if (!acc) return { ok: false, error: "无已配置微信账户" };
-        await sendWeixinText(acc, peerId, text);
+      // 统一走适配器注册表（内置 weixin/qq/feishu 已在 apply 时注册）
+      const adapter = this.channels.get(channel);
+      if (adapter) {
+        await adapter.send(peerId, text);
         return { ok: true, channel, peerId };
       }
-      if (channel === "qq") {
-        const bot = d.getQqBot();
-        if (!bot) return { ok: false, error: "无 QQ bot 在线" };
-        // peerKey 形如 c2c:<id> / group:<id>:<sender>；私聊 c2c 直接可发（无 msgId = 主动推送）
-        if (String(peerId).startsWith("c2c:")) {
-          await sendQqText(bot, { scope: "c2c", targetId: String(peerId).slice(4) }, text);
-          return { ok: true, channel, peerId };
-        }
-        return { ok: false, error: "QQ 群聊推送暂不支持（仅 c2c 私聊）" };
-      }
-      if (channel === "feishu") {
-        const client = d.getFeishuClient();
-        if (!client) return { ok: false, error: "无飞书 client 在线" };
-        if (String(peerId).startsWith("p2p:")) {
-          await sendFeishuText(client, String(peerId).slice(4), text);
-          return { ok: true, channel, peerId };
-        }
-        return { ok: false, error: "飞书群聊推送暂不支持（仅 p2p 私聊）" };
-      }
-      return { ok: false, error: "未知渠道 " + channel };
+      return { ok: false, error: "未知渠道 " + channel + "（未注册适配器，可用 registerChannel 注册）" };
     } catch (err) {
       diagLog(`[channels-push] ${channel}/${peerId} 发送失败: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
       return { ok: false, error: String(err) };
@@ -113,8 +124,34 @@ export function apply(ctx) {
     getFeishuClient: () => (feishuClientsMap.size > 0 ? [...feishuClientsMap.values()][0] : null),
   };
   const pushApi = new ChannelsPushApi(ctx, deps);
-  new ChannelsPushApi(ctx, deps);
-  log.info("dsh-msg-hub: push 服务已提供（dsh-channels-push）");
+  // 内置三渠道注册进适配器注册表（第三方插件可用 registerChannel 继续扩展）
+  pushApi.registerChannel("weixin", {
+    send: async (peerId, text) => {
+      const acc = deps.getWeixinAccount();
+      if (!acc) throw new Error("无已配置微信账户");
+      await sendWeixinText(acc, peerId, text);
+    },
+    matchSessionId: (id) => String(id).startsWith("ch-weixin-"),
+  });
+  pushApi.registerChannel("qq", {
+    send: async (peerId, text) => {
+      const bot = deps.getQqBot();
+      if (!bot) throw new Error("无 QQ bot 在线");
+      if (!String(peerId).startsWith("c2c:")) throw new Error("QQ 群聊推送暂不支持（仅 c2c 私聊）");
+      await sendQqText(bot, { scope: "c2c", targetId: String(peerId).slice(4) }, text);
+    },
+    matchSessionId: (id) => String(id).startsWith("ch-qq-"),
+  });
+  pushApi.registerChannel("feishu", {
+    send: async (peerId, text) => {
+      const client = deps.getFeishuClient();
+      if (!client) throw new Error("无飞书 client 在线");
+      if (!String(peerId).startsWith("p2p:")) throw new Error("飞书群聊推送暂不支持（仅 p2p 私聊）");
+      await sendFeishuText(client, String(peerId).slice(4), text);
+    },
+    matchSessionId: (id) => String(id).startsWith("ch-feishu-"),
+  });
+  log.info("dsh-msg-hub: push 服务已提供（dsh-channels-push，含适配器注册表）");
 
   // ── 远程监控：审批远程批准 / turn 推送 / /sessions /bind /status ──
   const remote = createRemoteMonitor(ctx, {
