@@ -44,16 +44,44 @@ cd $DSH_HOME/profiles/web && pnpm link /路径/dsh-im-bridge
 
 重启 `dsh web`。
 
-### 渠道登录
+### 渠道连接指南
+
+**微信（ilinkai 扫码登录）**
 
 ```bash
-# 微信（扫码）
-node scripts/weixin-login.mjs
-# QQ（官方通道扫码/凭证）
+node scripts/weixin-login.mjs login
+```
+
+1. 终端显示二维码 → 用微信「扫一扫」扫码确认
+2. 登录成功自动保存 token 到 `state/weixin/`，**重启 dsh** 生效
+3. 建议使用专用微信号（模拟协议登录，存在风控风险，见「安全提示」）
+
+**QQ（开放平台官方机器人，两种方式）**
+
+先到 [QQ 开放平台](https://q.qq.com) 注册机器人应用，拿到 AppID 与 AppSecret：
+
+```bash
+# 方式 A：凭证直填（推荐，机器人已创建时）
+node scripts/qq-login.mjs --appid <AppID> --secret <AppSecret>
+
+# 方式 B：扫码绑定（要求该 QQ 账号下已存在机器人应用）
 node scripts/qq-login.mjs
-# 飞书（直接填 AppID/Secret）
+```
+
+配置后**重启 dsh** 生效。⚠️ 定时主动推送还需在开放平台**申请「主动消息权限」**，否则推送会静默失败（被动回复不受影响）。
+
+**飞书（开放平台企业自建应用）**
+
+1. 到[飞书开放平台](https://open.feishu.cn)创建「企业自建应用」→ 开启「机器人」能力 → 发布应用
+2. 在应用「凭证与基础信息」页复制 AppID 与 AppSecret（需应用管理员权限）
+
+```bash
 node scripts/feishu-login.mjs --appid <AppID> --secret <AppSecret>
 ```
+
+配置后**重启 dsh** 生效。
+
+> 凭证全部保存在插件 `state/` 目录（已 gitignore，不会提交）；三个渠道可同时启用。
 
 ## 环境变量
 

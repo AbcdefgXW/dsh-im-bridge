@@ -41,13 +41,44 @@ Register in `cordis.patch.yml`:
 
 Restart `dsh web`.
 
-### Channel login
+### Channel connection guide
+
+**WeChat (ilinkai QR login)**
 
 ```bash
-node scripts/weixin-login.mjs   # WeChat (QR)
-node scripts/qq-login.mjs       # QQ (official channel)
-node scripts/feishu-login.mjs --appid <AppID> --secret <AppSecret>  # Feishu
+node scripts/weixin-login.mjs login
 ```
+
+1. A QR code appears in the terminal — scan it with the WeChat app
+2. On success the token is saved to `state/weixin/`; **restart dsh** to activate
+3. A dedicated WeChat account is recommended (simulated protocol — see "Safety Notes" for risk-control warnings)
+
+**QQ (Open Platform official bot, two options)**
+
+First register a bot app on the [QQ Open Platform](https://q.qq.com) to get AppID and AppSecret:
+
+```bash
+# Option A: credentials directly (recommended once the bot exists)
+node scripts/qq-login.mjs --appid <AppID> --secret <AppSecret>
+
+# Option B: QR binding (requires an existing bot under this QQ account)
+node scripts/qq-login.mjs
+```
+
+**Restart dsh** after configuring. ⚠️ Proactive pushes additionally require applying for **"proactive message permission"** on the Open Platform, otherwise they fail silently (passive replies are unaffected).
+
+**Feishu (Open Platform enterprise self-built app)**
+
+1. Create an "enterprise self-built app" on the [Feishu Open Platform](https://open.feishu.cn) → enable the **bot** capability → publish the app
+2. Copy AppID and AppSecret from the app's "Credentials & Basic Info" page (needs app admin permission)
+
+```bash
+node scripts/feishu-login.mjs --appid <AppID> --secret <AppSecret>
+```
+
+**Restart dsh** after configuring.
+
+> Credentials are stored under the plugin `state/` dir (gitignored, never committed); all three channels can run simultaneously.
 
 ## Environment Variables
 
