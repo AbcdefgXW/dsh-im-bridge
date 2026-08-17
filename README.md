@@ -89,6 +89,18 @@ node scripts/feishu-login.mjs --appid <AppID> --secret <AppSecret>
 
 > 凭证全部保存在插件 `state/` 目录（已 gitignore，不会提交）；三个渠道可同时启用。
 
+### 微信长消息分段（可配置）
+
+微信单条消息有长度上限（实测 1280 字符完整、1380 被拒），超长自动分段发送。**分段上限可配置**（默认 1200 字符/条，留余量）：
+
+```bash
+# 方式一：dsh-toolbox-web 设置页 → 定时任务下方「微信消息分段上限」输入框（改动即时生效）
+# 方式二：直接改配置文件
+vi state/weixin/config.json   # {"segmentLimit": 1200}
+```
+
+改后即时生效，无需重启。
+
 ## 卸载
 
 ```bash
