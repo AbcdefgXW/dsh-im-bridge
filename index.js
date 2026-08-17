@@ -11,7 +11,7 @@
  * 凭证落盘后本插件自动加载对应账户。
  */
 import { createBridge } from "./lib/bridge.js";
-import { startWeixinMonitors, sendWeixinText } from "./lib/weixin/adapter.js";
+import { startWeixinMonitors, sendWeixinText, getWeixinSegmentLimit, setWeixinSegmentLimit } from "./lib/weixin/adapter.js";
 import { startQqBots, sendQqText } from "./lib/qq/adapter.js";
 import { startFeishuBots, sendFeishuText } from "./lib/feishu/adapter.js";
 import { listWeixinAccountIds, resolveWeixinAccount } from "./dist/protocol/auth/accounts.js";
@@ -64,6 +64,18 @@ export class ChannelsPushApi extends Service {
       if (s.startsWith(prefix)) return { channel, peerId: s.slice(prefix.length) };
     }
     return null;
+  }
+
+  /** 读取渠道配置（如 weixin.segmentLimit）。 */
+  getChannelConfig(channel, key) {
+    if (channel === "weixin" && key === "segmentLimit") return { ok: true, value: getWeixinSegmentLimit() };
+    return { ok: false, error: "未知配置: " + String(channel) + "." + String(key) };
+  }
+
+  /** 设置渠道配置（如 weixin.segmentLimit，即时生效）。 */
+  setChannelConfig(channel, key, value) {
+    if (channel === "weixin" && key === "segmentLimit") return { ok: true, value: setWeixinSegmentLimit(Number(value)) };
+    return { ok: false, error: "未知配置: " + String(channel) + "." + String(key) };
   }
 
   async push({ channel, peerId, text }) {
