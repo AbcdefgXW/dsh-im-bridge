@@ -10,7 +10,7 @@
  * 登录不在此处（交互式扫码走 scripts/weixin-login.mjs / qq-login.mjs），
  * 凭证落盘后本插件自动加载对应账户。
  */
-import { createBridge } from "./lib/bridge.js";
+import { createBridge, getChannelsCfg, setChannelsCfg } from "./lib/bridge.js";
 import { startWeixinMonitors, sendWeixinText, getWeixinSegmentLimit, setWeixinSegmentLimit } from "./lib/weixin/adapter.js";
 import { startQqBots, sendQqText } from "./lib/qq/adapter.js";
 import { startFeishuBots, sendFeishuText } from "./lib/feishu/adapter.js";
@@ -53,15 +53,17 @@ export class ChannelsPushApi extends Service {
   /** 通过会话 ID 解析渠道（优先注册表 matchSessionId，内置前缀兜底）。 */
   resolveChannel(sessionId) {
     const s = String(sessionId || "");
+    // 轮换后的 ID 带 -N 尾缀（ch-weixin-<openid>-2），反解时剥掉，不影响真实 peerId
+    const stripEpoch = (pid) => String(pid).replace(/-\d+$/, "");
     for (const [channel, adapter] of this.channels) {
       if (typeof adapter.matchSessionId === "function" && adapter.matchSessionId(s)) {
         const prefix = "ch-" + channel + "-";
-        if (s.startsWith(prefix)) return { channel, peerId: s.slice(prefix.length) };
+        if (s.startsWith(prefix)) return { channel, peerId: stripEpoch(s.slice(prefix.length)) };
       }
     }
     // 内置前缀兜底
     for (const [prefix, channel] of [["ch-weixin-", "weixin"], ["ch-qq-", "qq"], ["ch-feishu-", "feishu"]]) {
-      if (s.startsWith(prefix)) return { channel, peerId: s.slice(prefix.length) };
+      if (s.startsWith(prefix)) return { channel, peerId: stripEpoch(s.slice(prefix.length)) };
     }
     return null;
   }
@@ -76,6 +78,47 @@ export class ChannelsPushApi extends Service {
   setChannelConfig(channel, key, value) {
     if (channel === "weixin" && key === "segmentLimit") return { ok: true, value: setWeixinSegmentLimit(Number(value)) };
     return { ok: false, error: "未知配置: " + String(channel) + "." + String(key) };
+  }
+
+  /** 读取渠道会话常驻策略（keepAliveSessions: {enabled, count}）。 */
+  getKeepAliveConfig() {
+    return { ok: true, ...getChannelsCfg() };
+  }
+
+  /** 读取渠道会话策略全量（常驻 + 继承条数）。 */
+  getChannelCfg() {
+    return { ok: true, ...getChannelsCfg() };
+  }
+
+  /** 更新渠道会话策略全量（patch 透传：keepAliveSessions{enabled,count} / inheritRecentCount）。 */
+  updateChannelCfg(patch = {}) {
+    return { ok: true, ...setChannelsCfg(patch) };
+  }
+
+  /** 设置渠道会话常驻策略：enabled 开关，count 1~5（默认 3）。即时生效并持久化。 */
+  setKeepAliveConfig({ enabled, count } = {}) {
+    return { ok: true, ...setChannelsCfg({ keepAliveSessions: { enabled, count } }) };
+  }
+
+  /**
+   * 释放内存：保留最近 keepCount 个活跃渠道会话（缺省按配置），其余释放。
+   * 释放 = flush 落盘 + dispose 摘除（下次消息自动 resume）。供工具箱「释放内存」调用。
+   */
+  async release(keepCount) {
+    const r = await this.deps.bridge.release(keepCount);
+    return { ok: true, ...r };
+  }
+
+  /** 释放指定渠道会话（/release 渠道命令用）。 */
+  async releaseTarget(channel, peerId) {
+    const r = await this.deps.bridge.releaseTarget(channel, peerId);
+    return { ok: true, ...r };
+  }
+
+  /** 轮换会话：该渠道用户开新会话（/new 渠道命令用），旧会话释放、历史保留。 */
+  async rotate(channel, peerId) {
+    const r = await this.deps.bridge.rotate(channel, peerId);
+    return { ok: true, ...r };
   }
 
   async push({ channel, peerId, text }) {
@@ -94,7 +137,7 @@ export class ChannelsPushApi extends Service {
     }
   }
 
-  /** 唤醒渠道 agent 执行任务，AI 回复自动回传 IM（复用 bridge.inbound 完整流程）。 */
+  /** 唤醒渠道 agent 执行任务，AI 回复自动回传 IM（复用 bridge.inbound 完整流程，会话存留按常驻策略）。 */
   async task({ channel, peerId, prompt }) {
     const d = this.deps;
     try {
@@ -102,7 +145,6 @@ export class ChannelsPushApi extends Service {
         channel,
         peerId,
         text: prompt,
-        keepAlive: true,
         reply: async (replyText) => {
           const r = await this.push({ channel, peerId, text: replyText });
           if (!r.ok) diagLog(`[channels-task] 回传失败 ${channel}/${peerId}: ${r.error}`);
@@ -165,12 +207,17 @@ export function apply(ctx) {
   });
   log.info("dsh-msg-hub: push 服务已提供（dsh-channels-push，含适配器注册表）");
 
-  // ── 远程监控：审批远程批准 / turn 推送 / /sessions /bind /status ──
+  // ── 远程监控：审批远程批准 / turn 推送 / /sessions /bind /status /new /release /cfg ──
   const remote = createRemoteMonitor(ctx, {
     push: async (channel, peerId, text) => {
       const r = await pushApi.push({ channel, peerId, text });
       if (!r.ok) log.warn(`dsh-msg-hub: 远程推送失败 ${channel}/${peerId}: ${r.error}`);
     },
+    rotate: (channel, peerId) => bridge.rotate(channel, peerId),
+    releaseTarget: (channel, peerId) => bridge.releaseTarget(channel, peerId),
+    release: (keepCount) => bridge.release(keepCount),
+    getCfg: () => getChannelsCfg(),
+    setCfg: (patch) => setChannelsCfg(patch),
   });
   log.info("dsh-msg-hub: 远程监控已启用（/sessions /bind /status + 审批远程批准）");
   ctx.on("dispose", () => remote.stop());
@@ -190,7 +237,6 @@ export function apply(ctx) {
       channel: "weixin",
       peerId,
       text,
-      keepAlive: true,
       reply: async (replyText) => {
         await sendWeixinText(account, peerId, replyText, contextToken);
       },
@@ -219,7 +265,6 @@ export function apply(ctx) {
         channel: "qq",
         peerId: peerKey,
         text,
-        keepAlive: true,
         reply: async (replyText) => {
           await sendQqText(bot, replyTarget, replyText);
         },
@@ -248,7 +293,6 @@ export function apply(ctx) {
         channel: "feishu",
         peerId: peerKey,
         text,
-        keepAlive: true,
         reply: async (replyText) => {
           await sendFeishuText(client, openId, replyText);
         },
